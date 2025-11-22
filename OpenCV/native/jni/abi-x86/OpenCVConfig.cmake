@@ -77,7 +77,7 @@ endif()
 # Extract the directory where *this* file has been installed (determined at cmake run-time)
 # Get the absolute path with no ../.. relative marks, to eliminate implicit linker warnings
 get_filename_component(OpenCV_CONFIG_PATH "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
-get_filename_component(OpenCV_INSTALL_PATH "${OpenCV_CONFIG_PATH}/../../../../" REALPATH)
+get_filename_component(OpenCV_INSTALL_PATH "${OpenCV_CONFIG_PATH}/../../../" REALPATH)
 
 # Search packages for host system instead of packages for target system.
 # in case of cross compilation this macro should be defined by toolchain file
@@ -113,7 +113,7 @@ if(NOT TARGET ippicv)
   add_library(ippicv STATIC IMPORTED)
   set_target_properties(ippicv PROPERTIES
     IMPORTED_LINK_INTERFACE_LIBRARIES ""
-    IMPORTED_LOCATION "${OpenCV_INSTALL_PATH}/sdk/native/3rdparty/libs/x86/libippicv.a"
+    IMPORTED_LOCATION "${OpenCV_INSTALL_PATH}/native/3rdparty/libs/x86/libippicv.a"
   )
 endif()
 
@@ -128,7 +128,7 @@ set(OpenCV_SHARED OFF)
 set(OpenCV_USE_MANGLED_PATHS FALSE)
 
 set(OpenCV_LIB_COMPONENTS opencv_calib3d;opencv_core;opencv_dnn;opencv_features2d;opencv_flann;opencv_gapi;opencv_highgui;opencv_imgcodecs;opencv_imgproc;opencv_ml;opencv_objdetect;opencv_photo;opencv_stitching;opencv_video;opencv_videoio;opencv_java)
-set(__OpenCV_INCLUDE_DIRS "${OpenCV_INSTALL_PATH}/sdk/native/jni/include")
+set(__OpenCV_INCLUDE_DIRS "${OpenCV_INSTALL_PATH}/native/jni/include")
 
 set(OpenCV_INCLUDE_DIRS "")
 foreach(d ${__OpenCV_INCLUDE_DIRS})

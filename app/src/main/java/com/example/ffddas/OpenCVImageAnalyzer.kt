@@ -10,6 +10,8 @@ import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class OpenCVImageAnalyzer(
     private val opencvProcessor: OpenCVProcessor, 
@@ -32,7 +34,8 @@ class OpenCVImageAnalyzer(
                 return
             }
             
-            // Convert ImageProxy to Bitmap
+            // For live preview, use Kotlin OpenCV processor which respects filter state
+            // Native methods don't have filter context, so use fallback path
             val bitmap = imageToBitmap(image)
             
             // Check if bitmap is valid
@@ -42,7 +45,7 @@ class OpenCVImageAnalyzer(
                 return
             }
             
-            // Process the bitmap with OpenCV
+            // Process the bitmap with OpenCV processor (respects filter selection)
             val processedBitmap = opencvProcessor.processImage(bitmap)
             
             // Check if processed bitmap is valid

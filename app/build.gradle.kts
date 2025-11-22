@@ -5,9 +5,7 @@ plugins {
 
 android {
     namespace = "com.example.ffddas"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.ffddas"
@@ -17,6 +15,17 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        externalNativeBuild {
+            cmake {
+                cppFlags("-std=c++11", "-frtti", "-fexceptions")
+                arguments("-DOpenCV_DIR=" + project.rootDir.absolutePath + "/OpenCV/native/jni")
+            }
+        }
+        
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     buildTypes {
@@ -69,6 +78,9 @@ dependencies {
     
     // Glide for image loading
     implementation("com.github.bumptech.glide:glide:4.15.1")
+    
+    // NanoHTTPD for embedded web server
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
     
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

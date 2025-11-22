@@ -11,6 +11,16 @@ cmake_minimum_required(VERSION 3.22.1)
 # build script scope).
 project("ffddas")
 
+# Enable C++11, exceptions, RTTI
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -frtti -fexceptions")
+
+# Find OpenCV
+find_package(OpenCV REQUIRED COMPONENTS core imgproc)
+include_directories(${OpenCV_INCLUDE_DIRS})
+
 # Creates and names a library, sets it as either STATIC
 # or SHARED, and provides the relative paths to its source code.
 # You can define multiple libraries, and CMake builds them for you.
@@ -34,4 +44,6 @@ add_library(${CMAKE_PROJECT_NAME} SHARED
 target_link_libraries(${CMAKE_PROJECT_NAME}
         # List libraries link to the target library
         android
-        log)
+        log
+        jnigraphics
+        ${OpenCV_LIBS})

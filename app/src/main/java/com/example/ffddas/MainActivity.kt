@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity() {
     private var cameraProvider: ProcessCameraProvider? = null
     private var opencvProcessor: OpenCVProcessor? = null
     private lateinit var cameraExecutor: ExecutorService
+    private var webServer: WebServerService? = null
 
     // Filter state
     private var currentFilter = FilterType.NONE
@@ -72,6 +73,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Native method declarations
+    external fun stringFromJNI(): String
+    external fun processPhotoFrame(bitmapInput: Bitmap): Bitmap?
+    external fun processPreviewFrame(yuvImageBuffer: java.nio.ByteBuffer, width: Int, height: Int): ByteArray?
+    external fun bitmapToMat(bitmap: Bitmap): Long
+    external fun matToBitmap(matAddr: Long, outputBitmap: Bitmap): Boolean
+    external fun applyCannyDetection(matAddr: Long, lowThreshold: Double, highThreshold: Double): Long
+    external fun convertToGrayscale(matAddr: Long): Long
+    external fun releaseMat(matAddr: Long)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate called")
@@ -82,6 +93,17 @@ class MainActivity : AppCompatActivity() {
         // Initialize background executor
         cameraExecutor = Executors.newSingleThreadExecutor()
         Log.d(TAG, "Background executor initialized")
+
+        // Initialize web server (optional - doesn't affect camera functionality)
+        try {
+            webServer = WebServerService(8080)
+            if (webServer?.startServer() == true) {
+                Log.i(TAG, "Web server available at http://localhost:8080")
+                Toast.makeText(this, "Web viewer: http://localhost:8080", Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Web server initialization failed (non-critical): ${e.message}")
+        }
 
         // Setup UI event listeners
         setupUIListeners()
@@ -241,6 +263,10 @@ class MainActivity : AppCompatActivity() {
                     runOnUiThread {
                         // Store a copy of the processed bitmap for capture
                         lastProcessedBitmap = processedBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                        
+                        // Update web server frame (non-blocking)
+                        webServer?.updateFrame(processedBitmap)
+                        
                         binding.previewView.alpha = 0f
                         binding.processedImageView.visibility = View.VISIBLE
                         binding.processedImageView.setImageBitmap(processedBitmap)
@@ -299,7 +325,11 @@ class MainActivity : AppCompatActivity() {
     private fun saveBitmapToGallery(bitmap: Bitmap) {
         try {
             Log.d(TAG, "Saving bitmap to gallery, size: ${bitmap.width}x${bitmap.height}, filter: $currentFilter")
-            
+
+            // The bitmap is already processed by OpenCVProcessor with correct filter
+            // No need to reprocess - just save it directly
+            val processedForSave = bitmap
+
             val filterName = when (currentFilter) {
                 FilterType.EDGE_DETECTION -> "EdgeDetection"
                 FilterType.GRAYSCALE -> "Grayscale"
@@ -353,7 +383,7 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "Saving to file: ${photoFile.absolutePath}")
                 
                 photoFile.outputStream().use { outputStream ->
-                    val success = bitmap.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
+                    val success = processedForSave.compress(Bitmap.CompressFormat.JPEG, 95, outputStream)
                     outputStream.flush()
                     Log.d(TAG, "Bitmap compress success: $success")
                 }
@@ -472,6 +502,9 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         Log.d(TAG, "onDestroy called")
 
+        // Stop web server
+        webServer?.stopServer()
+
         // Shutdown executor
         cameraExecutor.shutdown()
 
@@ -483,8 +516,6 @@ class MainActivity : AppCompatActivity() {
 
         Log.d(TAG, "Resources cleaned up")
     }
-
-    external fun stringFromJNI(): String
 
     companion object {
         private const val TAG = "MainActivity"
