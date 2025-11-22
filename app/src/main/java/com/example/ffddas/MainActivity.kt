@@ -40,6 +40,8 @@ class MainActivity : AppCompatActivity() {
     private var currentFilter = FilterType.NONE
     private var isProcessing = false
     private var lastProcessedBitmap: Bitmap? = null // Store the last processed frame
+    private var frameCount: Long = 0
+    private var currentLensFacing: Int = CameraSelector.LENS_FACING_BACK
 
     enum class FilterType {
         NONE, EDGE_DETECTION, GRAYSCALE
@@ -126,6 +128,18 @@ class MainActivity : AppCompatActivity() {
         }
         Log.d(TAG, "Capture button listener set")
 
+        // Switch camera button
+        binding.switchCameraButton.setOnClickListener {
+            currentLensFacing = if (currentLensFacing == CameraSelector.LENS_FACING_BACK) {
+                CameraSelector.LENS_FACING_FRONT
+            } else {
+                CameraSelector.LENS_FACING_BACK
+            }
+            Log.d(TAG, "Switching camera. New lens facing: ${if (currentLensFacing == CameraSelector.LENS_FACING_BACK) "BACK" else "FRONT"}")
+            bindCameraUseCases()
+        }
+        Log.d(TAG, "Switch camera button listener set")
+
         // Filter selection listener
         binding.filterGroup.setOnCheckedChangeListener { _, checkedId ->
             currentFilter = when (checkedId) {
@@ -152,11 +166,12 @@ class MainActivity : AppCompatActivity() {
         val filterText = when (currentFilter) {
             FilterType.EDGE_DETECTION -> "Edge Detection"
             FilterType.GRAYSCALE -> "Grayscale"
-            FilterType.NONE -> "Face Detection"
+            FilterType.NONE -> "Normal"
         }
 
         runOnUiThread {
-            binding.statusText.text = "Filter: $filterText"
+            val framesText = frameCount.toString()
+            binding.statusText.text = "Preview: Raw Camera"
         }
     }
 
@@ -236,7 +251,7 @@ class MainActivity : AppCompatActivity() {
 
             // Camera selector - prefer back camera
             val cameraSelector = CameraSelector.Builder()
-                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .requireLensFacing(currentLensFacing)
                 .build()
 
             // Preview use case
@@ -250,31 +265,32 @@ class MainActivity : AppCompatActivity() {
                 .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
                 .build()
 
-            // Image analysis for preview processing
+            // Create ImageAnalysis for filter processing
             imageAnalyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setTargetResolution(android.util.Size(1280, 720))
                 .setTargetRotation(rotation)
                 .build()
 
-            // Set up analyzer
+            // Analyzer: show processed frame when filter != NONE, else raw preview
             opencvProcessor?.let { processor ->
                 imageAnalyzer?.setAnalyzer(cameraExecutor, OpenCVImageAnalyzer(processor, { processedBitmap ->
                     runOnUiThread {
-                        // Store a copy of the processed bitmap for capture
-                        lastProcessedBitmap = processedBitmap.copy(Bitmap.Config.ARGB_8888, false)
-                        
-                        // Update web server frame (non-blocking)
-                        webServer?.updateFrame(processedBitmap)
-                        
-                        binding.previewView.alpha = 0f
-                        binding.processedImageView.visibility = View.VISIBLE
-                        binding.processedImageView.setImageBitmap(processedBitmap)
+                        frameCount++
+                        if (currentFilter == FilterType.NONE) {
+                            // Raw preview mode: just ensure processed overlay hidden
+                            binding.previewView.alpha = 1f
+                            binding.processedImageView.visibility = View.GONE
+                        } else {
+                            binding.previewView.alpha = 0f
+                            binding.processedImageView.visibility = View.VISIBLE
+                            binding.processedImageView.setImageBitmap(processedBitmap)
+                        }
+                        updateStatusText()
                     }
                 }, 100))
             }
 
-            // Bind use cases to lifecycle
             provider.bindToLifecycle(
                 this,
                 cameraSelector,
@@ -301,25 +317,18 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Processing previous capture...", Toast.LENGTH_SHORT).show()
             return
         }
-
-        Log.d(TAG, "Taking photo with filter: $currentFilter")
-        
-        // Check if we have a processed bitmap
-        val bitmapToSave = lastProcessedBitmap ?: run {
-            Log.e(TAG, "No processed image available")
-            Toast.makeText(this, "No preview available", Toast.LENGTH_SHORT).show()
+        val capture = imageCapture ?: run {
+            Toast.makeText(this, "ImageCapture not ready", Toast.LENGTH_SHORT).show()
             return
         }
-
-        // Show progress indicator
         isProcessing = true
-        runOnUiThread {
-            binding.processingProgress.visibility = View.VISIBLE
-            binding.processingProgress.isIndeterminate = true
+        binding.processingProgress.visibility = View.VISIBLE
+        binding.processingProgress.isIndeterminate = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            captureToMediaStore(capture)
+        } else {
+            captureToFile(capture)
         }
-
-        // Save the processed bitmap
-        saveBitmapToGallery(bitmapToSave)
     }
 
     private fun saveBitmapToGallery(bitmap: Bitmap) {
@@ -333,7 +342,7 @@ class MainActivity : AppCompatActivity() {
             val filterName = when (currentFilter) {
                 FilterType.EDGE_DETECTION -> "EdgeDetection"
                 FilterType.GRAYSCALE -> "Grayscale"
-                FilterType.NONE -> "FaceDetection"
+                FilterType.NONE -> "Normal"
             }
             
             val timestamp = System.currentTimeMillis()

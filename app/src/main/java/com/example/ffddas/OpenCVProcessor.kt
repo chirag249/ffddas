@@ -93,42 +93,13 @@ class OpenCVProcessor(cascadeFile: File) {
                     grayMat
                 }
                 MainActivity.FilterType.NONE -> {
-                    Log.d(TAG, "Applying face detection (NONE filter)")
-                    // Apply motion blur reduction for face detection
-                    reduceMotionBlur(grayMat)
+                    Log.d(TAG, "NONE filter -> grayscale")
+                    grayMat
                 }
             }
             
-            // For face detection, detect faces and draw rectangles
-            if (currentFilter == MainActivity.FilterType.NONE && cascadeClassifier != null) {
-                // Detect faces with optimized parameters for performance
-                val faceDetections = MatOfRect()
-                cascadeClassifier?.detectMultiScale(
-                    filteredMat,
-                    faceDetections,
-                    1.05,  // scaleFactor - smaller for better accuracy
-                    3,     // minNeighbors - balanced for accuracy
-                    0,     // flags
-                    Size(60.0, 60.0),   // minSize - larger minimum to reduce false positives
-                    Size()              // maxSize - empty means no maximum size limit
-                )
-                
-                // Draw rectangles around detected faces on color image
-                val faces = faceDetections.toArray()
-                Log.d(TAG, "Detected ${faces.size} faces")
-                for (face in faces) {
-                    Imgproc.rectangle(
-                        rgbaMat,
-                        face.tl(),
-                        face.br(),
-                        FACE_RECT_COLOR,
-                        3
-                    )
-                }
-                
-                faceDetections.release()
-            } else {
-                // Convert filtered grayscale back to RGBA for display
+            // Convert filtered grayscale (or edges) back to RGBA for display
+            if (filteredMat.type() == grayMat.type()) {
                 Imgproc.cvtColor(filteredMat, rgbaMat, Imgproc.COLOR_GRAY2RGBA)
             }
             

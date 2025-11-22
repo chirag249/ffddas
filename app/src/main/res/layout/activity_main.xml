@@ -46,7 +46,7 @@
             android:id="@+id/statusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Filter: Face Detection"
+            android:text="Mode: Normal"
             android:textColor="@android:color/white"
             android:textSize="14sp"
             android:gravity="center"
@@ -84,7 +84,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Face Detection"
+                android:text="Normal"
                 android:textColor="@android:color/white"
                 android:buttonTint="@android:color/white"
                 android:checked="true" />
@@ -116,6 +116,15 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:scaleType="fitCenter"
                 android:contentDescription="Capture Photo" />
+
+            <ImageButton
+                android:id="@+id/switchCameraButton"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginStart="24dp"
+                android:src="@android:drawable/ic_menu_rotate"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Switch Camera" />
 
         </LinearLayout>
 
