@@ -61,6 +61,15 @@ dependencies {
     implementation("androidx.camera:camera-view:${cameraxVersion}")
     implementation("androidx.camera:camera-extensions:${cameraxVersion}")
     
+    // CardView for gallery
+    implementation("androidx.cardview:cardview:1.0.0")
+    
+    // RecyclerView
+    implementation("androidx.recyclerview:recyclerview:1.3.0")
+    
+    // Glide for image loading
+    implementation("com.github.bumptech.glide:glide:4.15.1")
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

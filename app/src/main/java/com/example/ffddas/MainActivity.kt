@@ -2,6 +2,7 @@ package com.example.ffddas
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -164,15 +165,21 @@ class MainActivity : AppCompatActivity() {
         // Create an image analysis use case
         imageAnalyzer = ImageAnalysis.Builder()
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setTargetResolution(android.util.Size(1280, 720)) // Higher resolution for better quality
             .build()
 
         // Set up the image analyzer with OpenCV processing
         opencvProcessor?.let { processor ->
-            imageAnalyzer?.setAnalyzer(cameraExecutor, OpenCVImageAnalyzer(processor) { processedBitmap ->
-                // Handle processed frame here (e.g., display it)
-                // For now, we just log that processing occurred
-                Log.d(TAG, "Frame processed with OpenCV")
-            })
+            imageAnalyzer?.setAnalyzer(cameraExecutor, OpenCVImageAnalyzer(processor, { processedBitmap ->
+                // Display the processed frame with face detection
+                runOnUiThread {
+                    // Hide the raw preview and show only the processed image with face detection
+                    binding.previewView.alpha = 0f
+                    binding.processedImageView.visibility = android.view.View.VISIBLE
+                    binding.processedImageView.setImageBitmap(processedBitmap)
+                    Log.d(TAG, "Processed frame with face detection displayed")
+                }
+            }, 100)) // Process frames more frequently (10 FPS) for smoother output
         }
 
         // Choose the camera by requiring a lens facing
@@ -200,29 +207,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun openGallery() {
         Log.d(TAG, "Opening gallery")
-        // Create an intent to view images in the app's directory
-        val photoDir = getOutputDirectory()
-        if (photoDir.exists() && photoDir.isDirectory) {
-            val photos = photoDir.listFiles { file -> 
-                file.name.endsWith(".jpg") || file.name.endsWith(".jpeg") || file.name.endsWith(".png")
-            }
-            
-            if (photos != null && photos.isNotEmpty()) {
-                // For now, just show a toast with the number of photos
-                Toast.makeText(this, "Found ${photos.size} photos", Toast.LENGTH_SHORT).show()
-                Log.d(TAG, "Found ${photos.size} photos in directory: ${photoDir.absolutePath}")
-                
-                // TODO: Implement a proper gallery view
-                // This would typically involve starting a new activity with a RecyclerView
-                // showing thumbnails of all captured photos
-            } else {
-                Toast.makeText(this, "No photos found", Toast.LENGTH_SHORT).show()
-                Log.d(TAG, "No photos found in directory: ${photoDir.absolutePath}")
-            }
-        } else {
-            Toast.makeText(this, "Photo directory not found", Toast.LENGTH_SHORT).show()
-            Log.d(TAG, "Photo directory not found: ${photoDir.absolutePath}")
-        }
+        // Start the GalleryActivity
+        val intent = android.content.Intent(this, GalleryActivity::class.java)
+        startActivity(intent)
     }
     
     // Method to capture photo
@@ -294,7 +281,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun getOutputDirectory(): File {
-        val mediaDir = externalMediaDirs.firstOrNull()?.let {
+        val mediaDir = getExternalMediaDirs().firstOrNull()?.let {
             File(it, resources.getString(R.string.app_name)).apply { mkdirs() }
         }
         return if (mediaDir != null && mediaDir.exists())
