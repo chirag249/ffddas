@@ -327,6 +327,8 @@ class MainActivity : AppCompatActivity() {
                             binding.previewView.alpha = 0f
                             binding.processedImageView.visibility = View.VISIBLE
                             binding.processedImageView.setImageBitmap(processedBitmap)
+                            // Store latest processed frame for capture overwrite
+                            lastProcessedBitmap = processedBitmap
                         }
                         webServer?.updateFrame(processedBitmap)
                         updateStatusText()
@@ -480,6 +482,16 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    // Overwrite with processed bitmap if filter active
+                    if (currentFilter != FilterType.NONE && lastProcessedBitmap != null && output.savedUri != null) {
+                        try {
+                            contentResolver.openOutputStream(output.savedUri!!, "w")?.use { os ->
+                                lastProcessedBitmap!!.compress(Bitmap.CompressFormat.JPEG, 95, os)
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Filtered overwrite failed: ${e.message}")
+                        }
+                    }
                     handleCaptureSuccess("Photo saved to gallery")
                 }
             }
@@ -504,6 +516,16 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                    // Overwrite file with processed bitmap if filter active
+                    if (currentFilter != FilterType.NONE && lastProcessedBitmap != null) {
+                        try {
+                            photoFile.outputStream().use { os ->
+                                lastProcessedBitmap!!.compress(Bitmap.CompressFormat.JPEG, 95, os)
+                            }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Filtered file overwrite failed: ${e.message}")
+                        }
+                    }
                     handleCaptureSuccess("Photo saved: ${photoFile.absolutePath}")
                 }
             }
