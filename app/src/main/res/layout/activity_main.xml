@@ -6,44 +6,119 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
+    <!-- PreviewView for camera preview with CameraX -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:visibility="visible"
+        app:layout_constraintBottom_toTopOf="@+id/controlPanel"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- ImageView for processed frames overlay -->
     <ImageView
         android:id="@+id/processedImageView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:scaleType="fitCenter"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@+id/previewView"
-        app:layout_constraintEnd_toEndOf="@+id/previewView"
-        app:layout_constraintStart_toStartOf="@+id/previewView"
-        app:layout_constraintTop_toTopOf="@+id/previewView" />
+        app:layout_constraintBottom_toTopOf="@+id/controlPanel"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
-        android:id="@+id/captureButton"
-        android:layout_width="wrap_content"
+    <!-- Control Panel Container -->
+    <LinearLayout
+        android:id="@+id/controlPanel"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
-        android:text="Capture"
+        android:orientation="vertical"
+        android:background="#CC000000"
+        android:padding="16dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent">
 
-    <Button
-        android:id="@+id/galleryButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
-        android:layout_marginEnd="16dp"
-        android:text="Gallery"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/captureButton" />
+        <!-- Status Text -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Filter: Face Detection"
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Filter Selection RadioGroup -->
+        <RadioGroup
+            android:id="@+id/filterGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="12dp">
+
+            <RadioButton
+                android:id="@+id/edgeDetectionRadio"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Edge Detection"
+                android:textColor="@android:color/white"
+                android:buttonTint="@android:color/white" />
+
+            <RadioButton
+                android:id="@+id/grayscaleRadio"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Grayscale"
+                android:textColor="@android:color/white"
+                android:buttonTint="@android:color/white" />
+
+            <RadioButton
+                android:id="@+id/faceDetectionRadio"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Face Detection"
+                android:textColor="@android:color/white"
+                android:buttonTint="@android:color/white"
+                android:checked="true" />
+
+        </RadioGroup>
+
+        <!-- Progress Indicator -->
+        <ProgressBar
+            android:id="@+id/processingProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Button Controls Container -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Capture Button as ImageButton -->
+            <ImageButton
+                android:id="@+id/captureButton"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:src="@android:drawable/ic_menu_camera"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="fitCenter"
+                android:contentDescription="Capture Photo" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

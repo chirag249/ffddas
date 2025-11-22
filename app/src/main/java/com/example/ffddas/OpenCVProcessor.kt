@@ -3,23 +3,19 @@ package com.example.ffddas
 import android.graphics.Bitmap
 import android.util.Log
 import org.opencv.android.Utils
-import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.MatOfRect
-import org.opencv.core.Rect
 import org.opencv.core.Scalar
 import org.opencv.core.Size
 import org.opencv.core.CvType
 import org.opencv.imgproc.Imgproc
 import org.opencv.objdetect.CascadeClassifier
-import org.opencv.video.Video
 import java.io.File
-import java.util.ArrayList
 
 class OpenCVProcessor(cascadeFile: File) {
     
     private var cascadeClassifier: CascadeClassifier? = null
-    private var previousGrayMat: Mat? = null // For motion blur reduction
+    private var currentFilter: MainActivity.FilterType = MainActivity.FilterType.NONE
     
     init {
         Log.d(TAG, "Initializing OpenCV processor with cascade file: ${cascadeFile.absolutePath}")
@@ -27,6 +23,14 @@ class OpenCVProcessor(cascadeFile: File) {
         Log.d(TAG, "Cascade file size: ${cascadeFile.length()} bytes")
         initializeOpenCV(cascadeFile)
         Log.d(TAG, "OpenCV processor initialization completed")
+    }
+    
+    /**
+     * Set current filter type
+     */
+    fun setFilter(filter: MainActivity.FilterType) {
+        currentFilter = filter
+        Log.d(TAG, "Filter set to: $currentFilter")
     }
     
     private fun initializeOpenCV(cascadeFile: File) {
@@ -59,19 +63,13 @@ class OpenCVProcessor(cascadeFile: File) {
     }
     
     /**
-     * Process a bitmap image with OpenCV for face detection
+     * Process a bitmap image with OpenCV for face detection and filters
      * @param bitmap The input bitmap to process
-     * @return The processed bitmap with face detection overlays
+     * @return The processed bitmap with filters and/or face detection overlays
      */
     fun processImage(bitmap: Bitmap): Bitmap {
-        // If classifier is not loaded, return original bitmap
-        if (cascadeClassifier == null) {
-            Log.d(TAG, "Cascade classifier not loaded, returning original bitmap")
-            return bitmap
-        }
-        
         try {
-            Log.d(TAG, "Processing image with OpenCV")
+            Log.d(TAG, "Processing image with OpenCV, filter: $currentFilter")
             Log.d(TAG, "Input bitmap size: ${bitmap.width}x${bitmap.height}")
             
             // Convert bitmap to Mat
@@ -84,56 +82,90 @@ class OpenCVProcessor(cascadeFile: File) {
             Imgproc.cvtColor(rgbaMat, grayMat, Imgproc.COLOR_RGBA2GRAY)
             Log.d(TAG, "Converted to grayscale")
             
-            // Motion blur reduction techniques
-            val processedGrayMat = reduceMotionBlur(grayMat)
-            
-            // Detect faces with optimized parameters for performance
-            val faceDetections = MatOfRect()
-            cascadeClassifier?.detectMultiScale(
-                processedGrayMat,
-                faceDetections,
-                1.2,   // scaleFactor - larger for better performance
-                3,     // minNeighbors - balanced for accuracy
-                0,     // flags
-                Size(80.0, 80.0),   // minSize - larger minimum to reduce false positives and improve performance
-                Size()              // maxSize - empty means no maximum size limit
-            )
-            
-            // Draw rectangles around detected faces
-            val facesArray = faceDetections.toArray()
-            Log.d(TAG, "Detected ${facesArray.size} faces")
-            
-            // Only draw rectangles if faces were detected
-            if (facesArray.isNotEmpty()) {
-                for (rect: Rect in facesArray) {
-                    Log.d(TAG, "Face detected at: (${rect.x}, ${rect.y}) size: ${rect.width}x${rect.height}")
-                    Imgproc.rectangle(rgbaMat, rect.tl(), rect.br(), FACE_RECT_COLOR, 2)
+            // Apply filter based on current selection
+            val filteredMat = when (currentFilter) {
+                MainActivity.FilterType.EDGE_DETECTION -> {
+                    Log.d(TAG, "Applying EDGE_DETECTION filter")
+                    applyEdgeDetection(grayMat)
                 }
-            } else {
-                Log.d(TAG, "No faces detected in this frame")
+                MainActivity.FilterType.GRAYSCALE -> {
+                    Log.d(TAG, "Applying GRAYSCALE filter")
+                    grayMat
+                }
+                MainActivity.FilterType.NONE -> {
+                    Log.d(TAG, "Applying face detection (NONE filter)")
+                    // Apply motion blur reduction for face detection
+                    reduceMotionBlur(grayMat)
+                }
             }
             
-            // Convert back to bitmap
+            // For face detection, detect faces and draw rectangles
+            if (currentFilter == MainActivity.FilterType.NONE && cascadeClassifier != null) {
+                // Detect faces with optimized parameters for performance
+                val faceDetections = MatOfRect()
+                cascadeClassifier?.detectMultiScale(
+                    filteredMat,
+                    faceDetections,
+                    1.05,  // scaleFactor - smaller for better accuracy
+                    3,     // minNeighbors - balanced for accuracy
+                    0,     // flags
+                    Size(60.0, 60.0),   // minSize - larger minimum to reduce false positives
+                    Size()              // maxSize - empty means no maximum size limit
+                )
+                
+                // Draw rectangles around detected faces on color image
+                val faces = faceDetections.toArray()
+                Log.d(TAG, "Detected ${faces.size} faces")
+                for (face in faces) {
+                    Imgproc.rectangle(
+                        rgbaMat,
+                        face.tl(),
+                        face.br(),
+                        FACE_RECT_COLOR,
+                        3
+                    )
+                }
+                
+                faceDetections.release()
+            } else {
+                // Convert filtered grayscale back to RGBA for display
+                Imgproc.cvtColor(filteredMat, rgbaMat, Imgproc.COLOR_GRAY2RGBA)
+            }
+            
+            // Convert result back to bitmap
             val processedBitmap = Bitmap.createBitmap(
-                rgbaMat.cols(), rgbaMat.rows(), Bitmap.Config.ARGB_8888
+                rgbaMat.cols(), 
+                rgbaMat.rows(), 
+                Bitmap.Config.ARGB_8888
             )
             Utils.matToBitmap(rgbaMat, processedBitmap)
             
             // Release Mats to free memory
             rgbaMat.release()
             grayMat.release()
-            processedGrayMat.release()
-            faceDetections.release()
+            if (filteredMat != grayMat) {
+                filteredMat.release()
+            }
             
             Log.d(TAG, "Image processing completed, output bitmap size: ${processedBitmap.width}x${processedBitmap.height}")
             return processedBitmap
-        } catch (e: UnsatisfiedLinkError) {
-            Log.e(TAG, "OpenCV native library not loaded during image processing: ${e.message}", e)
-            return bitmap
         } catch (e: Exception) {
             Log.e(TAG, "Error processing image with OpenCV: ${e.message}", e)
             return bitmap
         }
+    }
+    
+    /**
+     * Apply edge detection filter (Canny)
+     */
+    private fun applyEdgeDetection(grayMat: Mat): Mat {
+        val edges = Mat()
+        // Apply Gaussian blur to reduce noise
+        Imgproc.GaussianBlur(grayMat, edges, Size(5.0, 5.0), 1.5)
+        // Apply Canny edge detection
+        Imgproc.Canny(edges, edges, 50.0, 150.0)
+        Log.d(TAG, "Applied edge detection filter")
+        return edges
     }
     
     /**
@@ -143,69 +175,31 @@ class OpenCVProcessor(cascadeFile: File) {
      */
     private fun reduceMotionBlur(grayMat: Mat): Mat {
         val processedMat = Mat()
-        grayMat.copyTo(processedMat)
         
-        // Store current frame for next comparison and use previous frame for stabilization
-        val prevMat = previousGrayMat
-        if (prevMat != null && !prevMat.empty()) {
-            // Calculate motion level using frame difference
-            val diffMat = Mat()
-            Core.absdiff(grayMat, prevMat, diffMat)
-            
-            // Apply threshold to highlight significant changes
-            val thresholdMat = Mat()
-            Imgproc.threshold(diffMat, thresholdMat, 30.0, 255.0, Imgproc.THRESH_BINARY)
-            
-            // Calculate motion ratio
-            val motionLevel = Core.countNonZero(thresholdMat)
-            val totalPixels = diffMat.cols() * diffMat.rows()
-            val motionRatio = motionLevel.toDouble() / totalPixels
-            
-            // Apply stabilization based on motion level
-            if (motionRatio > 0.05) { // High motion
-                Log.d(TAG, "High motion detected (ratio: $motionRatio), applying strong stabilization")
-                // Strong temporal filtering for high motion
-                val filtered = Mat()
-                Core.addWeighted(processedMat, 0.3, prevMat, 0.7, 0.0, filtered)
-                filtered.copyTo(processedMat)
-                filtered.release()
-            } else if (motionRatio > 0.01) { // Moderate motion
-                Log.d(TAG, "Moderate motion detected (ratio: $motionRatio), applying stabilization")
-                // Moderate temporal filtering
-                val filtered = Mat()
-                Core.addWeighted(processedMat, 0.6, prevMat, 0.4, 0.0, filtered)
-                filtered.copyTo(processedMat)
-                filtered.release()
-            } else { // Low motion
-                Log.d(TAG, "Low motion detected (ratio: $motionRatio), applying light stabilization")
-                // Light temporal filtering for stability
-                val filtered = Mat()
-                Core.addWeighted(processedMat, 0.8, prevMat, 0.2, 0.0, filtered)
-                filtered.copyTo(processedMat)
-                filtered.release()
-            }
-            
-            // Clean up
-            diffMat.release()
-            thresholdMat.release()
-        }
+        // Apply histogram equalization to improve contrast and reduce blur effects
+        Imgproc.equalizeHist(grayMat, processedMat)
         
-        // Update previous frame
-        if (previousGrayMat == null) {
-            previousGrayMat = Mat()
-        }
-        grayMat.copyTo(previousGrayMat)
+        // Apply sharpening to counteract any blur
+        val sharpened = Mat()
+        val kernel = Mat(3, 3, CvType.CV_32F)
+        kernel.put(0, 0, 
+            0.0, -1.0, 0.0,
+            -1.0, 5.0, -1.0,
+            0.0, -1.0, 0.0
+        )
+        Imgproc.filter2D(processedMat, sharpened, -1, kernel)
+        kernel.release()
         
-        return processedMat
+        processedMat.release()
+        return sharpened
     }
     
     fun release() {
         Log.d(TAG, "Releasing OpenCV resources")
-        previousGrayMat?.release()
     }
     
     companion object {
         private const val TAG = "OpenCVProcessor"
-        private val FACE_RECT_COLOR = Scalar(0.0, 255.0, 0.0) // Green color in BGR for better visibility
+        private val FACE_RECT_COLOR = Scalar(0.0, 255.0, 0.0) // Green color in BGR
     }
 }
