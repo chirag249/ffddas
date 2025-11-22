@@ -181,13 +181,13 @@ class GLImageRenderer : GLSurfaceView.Renderer {
 
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId)
 
-        // Set attributes
-        vertexBuffer.position(0)
+        // Set attributes using VBO
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId)
         GLES20.glEnableVertexAttribArray(aPositionLoc)
-        GLES20.glVertexAttribPointer(aPositionLoc,3,GLES20.GL_FLOAT,false,5*4,vertexBuffer)
-        vertexBuffer.position(3)
+        GLES20.glVertexAttribPointer(aPositionLoc, 3, GLES20.GL_FLOAT, false, 5*4, 0)
         GLES20.glEnableVertexAttribArray(aTexCoordLoc)
-        GLES20.glVertexAttribPointer(aTexCoordLoc,2,GLES20.GL_FLOAT,false,5*4,vertexBuffer)
+        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 5*4, 3*4)
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
 
         GLES20.glUniformMatrix4fv(uMvpLoc,1,false,mvp,0)
         GLES20.glUniform1i(uTexLoc,0)
@@ -195,8 +195,21 @@ class GLImageRenderer : GLSurfaceView.Renderer {
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,0,4)
     }
 
+    private var vboId: Int = 0
+
     private fun setupBuffers() {
-        // No VBO use for brevity; could be added for performance
+        val buffers = IntArray(1)
+        GLES20.glGenBuffers(1, buffers, 0)
+        vboId = buffers[0]
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, vboId)
+        vertexBuffer.position(0)
+        GLES20.glBufferData(
+            GLES20.GL_ARRAY_BUFFER,
+            vertexData.size * 4,
+            vertexBuffer,
+            GLES20.GL_STATIC_DRAW
+        )
+        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, 0)
     }
 
     private fun buildProgram(vs: String, fs: String): Int {

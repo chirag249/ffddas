@@ -41,6 +41,9 @@ class MainActivity : AppCompatActivity() {
     private var isProcessing = false
     private var lastProcessedBitmap: Bitmap? = null // Store the last processed frame
     private var frameCount: Long = 0
+    private var fpsStartMs: Long = System.currentTimeMillis()
+    private var fpsFrames: Int = 0
+    private var lastUiFps: Float = 0f
     private var currentLensFacing: Int = CameraSelector.LENS_FACING_BACK
 
     enum class FilterType {
@@ -98,7 +101,38 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize web server (optional - doesn't affect camera functionality)
         try {
-            webServer = WebServerService(8080)
+            webServer = WebServerService(8080).apply {
+                setCaptureCallback { runOnUiThread { takePhoto() }; true }
+                setSwitchCameraCallback {
+                    runOnUiThread {
+                        currentLensFacing = if (currentLensFacing == CameraSelector.LENS_FACING_BACK) CameraSelector.LENS_FACING_FRONT else CameraSelector.LENS_FACING_BACK
+                        bindCameraUseCases()
+                    }
+                    true
+                }
+                setStatusCallback {
+                    mapOf(
+                        "filter" to currentFilter.name,
+                        "fps" to "%.1f".format(lastUiFps),
+                        "frames" to frameCount,
+                        "lensFacing" to if (currentLensFacing == CameraSelector.LENS_FACING_BACK) "BACK" else "FRONT"
+                    )
+                }
+                setSetFilterCallback { mode ->
+                    runOnUiThread {
+                        currentFilter = when(mode.uppercase()) {
+                            "GRAYSCALE", "GRAY" -> FilterType.GRAYSCALE
+                            "EDGE_DETECTION", "EDGE" -> FilterType.EDGE_DETECTION
+                            else -> FilterType.NONE
+                        }
+                        onFilterChanged()
+                    }
+                    true
+                }
+                setListGalleryCallback {
+                    getOutputDirectory().listFiles()?.filter { it.isFile && it.extension.lowercase() in listOf("jpg","jpeg","png") }?.sortedByDescending { it.lastModified() }?.map { it.name } ?: emptyList()
+                }
+            }
             if (webServer?.startServer() == true) {
                 Log.i(TAG, "Web server available at http://localhost:8080")
                 Toast.makeText(this, "Web viewer: http://localhost:8080", Toast.LENGTH_LONG).show()
@@ -138,7 +172,24 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "Switching camera. New lens facing: ${if (currentLensFacing == CameraSelector.LENS_FACING_BACK) "BACK" else "FRONT"}")
             bindCameraUseCases()
         }
+        // Long-press to open web viewer in browser without changing layout
+        binding.switchCameraButton.setOnLongClickListener {
+            try {
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("http://127.0.0.1:8080"))
+                startActivity(intent)
+                true
+            } catch (e: Exception) { false }
+        }
         Log.d(TAG, "Switch camera button listener set")
+
+        binding.openWebViewerButton.setOnClickListener {
+            try {
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("http://127.0.0.1:8080"))
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Unable to open web viewer", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         // Filter selection listener
         binding.filterGroup.setOnCheckedChangeListener { _, checkedId ->
@@ -157,9 +208,8 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "=== Filter changed to: $currentFilter ===")
         updateStatusText()
 
-        // Apply filter to OpenCV processor
-        opencvProcessor?.setFilter(currentFilter)
-        Log.d(TAG, "Filter applied to OpenCV processor")
+        // Native processing modes are applied in analyzer via NativeOpenCVHelper
+        Log.d(TAG, "Filter applied to native pipeline")
     }
 
     private fun updateStatusText() {
@@ -170,8 +220,12 @@ class MainActivity : AppCompatActivity() {
         }
 
         runOnUiThread {
-            val framesText = frameCount.toString()
-            binding.statusText.text = "Preview: Raw Camera"
+            val filterText = when (currentFilter) {
+                FilterType.EDGE_DETECTION -> "Edge Detection"
+                FilterType.GRAYSCALE -> "Grayscale"
+                FilterType.NONE -> "Normal"
+            }
+            binding.statusText.text = "Mode: $filterText | FPS: ${"%.1f".format(lastUiFps)} | Frames: $frameCount"
         }
     }
 
@@ -193,9 +247,7 @@ class MainActivity : AppCompatActivity() {
                 Log.d(TAG, "Got camera provider from future")
                 cameraProvider = provider
 
-                // Initialize OpenCV processor
-                Log.d(TAG, "Initializing OpenCV processor")
-                initializeOpenCVProcessor()
+                // Native pipeline in use; no Kotlin OpenCV initialization required
 
                 // Build and bind the camera use cases
                 Log.d(TAG, "Binding camera use cases")
@@ -213,24 +265,7 @@ class MainActivity : AppCompatActivity() {
         }, ContextCompat.getMainExecutor(this))
     }
 
-    private fun initializeOpenCVProcessor() {
-        try {
-            Log.d(TAG, "Initializing OpenCV processor")
-            val faceCascadeFile = OpenCVHelper.getFaceCascadeFile(this)
-            Log.d(TAG, "Cascade file path: ${faceCascadeFile.absolutePath}")
-
-            opencvProcessor = OpenCVProcessor(faceCascadeFile)
-            opencvProcessor?.setFilter(currentFilter)
-            Log.d(TAG, "OpenCV processor initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize OpenCV", e)
-            Toast.makeText(
-                this,
-                "Failed to initialize face detection: ${e.message}",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-    }
+    // Kotlin OpenCV processor not used; native pipeline active
 
     private fun bindCameraUseCases() {
         Log.d(TAG, "Binding camera use cases for Photo mode")
@@ -273,12 +308,19 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
             // Analyzer: show processed frame when filter != NONE, else raw preview
-            opencvProcessor?.let { processor ->
-                imageAnalyzer?.setAnalyzer(cameraExecutor, OpenCVImageAnalyzer(processor, { processedBitmap ->
+            imageAnalyzer?.setAnalyzer(
+                cameraExecutor,
+                OpenCVImageAnalyzer({ processedBitmap ->
                     runOnUiThread {
                         frameCount++
+                        fpsFrames++
+                        val now = System.currentTimeMillis()
+                        if (now - fpsStartMs >= 1000) {
+                            lastUiFps = fpsFrames * 1000f / (now - fpsStartMs)
+                            fpsFrames = 0
+                            fpsStartMs = now
+                        }
                         if (currentFilter == FilterType.NONE) {
-                            // Raw preview mode: just ensure processed overlay hidden
                             binding.previewView.alpha = 1f
                             binding.processedImageView.visibility = View.GONE
                         } else {
@@ -286,10 +328,11 @@ class MainActivity : AppCompatActivity() {
                             binding.processedImageView.visibility = View.VISIBLE
                             binding.processedImageView.setImageBitmap(processedBitmap)
                         }
+                        webServer?.updateFrame(processedBitmap)
                         updateStatusText()
                     }
-                }, 100))
-            }
+                }, { currentFilter }, 100)
+            )
 
             provider.bindToLifecycle(
                 this,
@@ -520,8 +563,7 @@ class MainActivity : AppCompatActivity() {
         // Unbind camera
         cameraProvider?.unbindAll()
 
-        // Release OpenCV resources
-        opencvProcessor?.release()
+        // Release OpenCV resources (native handled internally)
 
         Log.d(TAG, "Resources cleaned up")
     }

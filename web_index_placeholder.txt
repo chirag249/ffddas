@@ -1,0 +1,1 @@
+Create directory C:\Users\chira\AndroidStudioProjects\ffddas\web and add tsconfig.json + src/index.ts + index.html. (This placeholder exists because the tool cannot create directories.)

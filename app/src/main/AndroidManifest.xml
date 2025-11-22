@@ -4,6 +4,7 @@
 
     <!-- CAMERA permission declared in manifest (Gradle cannot inject uses-permission; keeping explicit) -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.INTERNET" />
     
     <!-- Permissions for older Android versions -->
     <uses-permission

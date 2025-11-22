@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FFDDAS Live Viewer</title>
+</head>
+<body>
+  <h3>FFDDAS Live Viewer</h3>
+  <canvas id="canvas" width="640" height="480" style="border:1px solid #444"></canvas>
+  <div>
+    <label for="rate">Refresh:</label>
+    <select id="rate">
+      <option value="100">100 ms</option>
+      <option value="250" selected>250 ms</option>
+      <option value="500">500 ms</option>
+      <option value="1000">1 s</option>
+    </select>
+    <button id="refresh">Refresh Now</button>
+    <span id="status">Disconnected</span>
+    <span id="fps">FPS: 0</span>
+  </div>
+  <script type="module">
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const statusEl = document.getElementById('status');
+    const fpsEl = document.getElementById('fps');
+    const rateSel = document.getElementById('rate');
+    const btn = document.getElementById('refresh');
+    let last = performance.now();
+    let frames = 0;
+    let timer = null;
+    btn.addEventListener('click', fetchFrame);
+    function schedule(){ if (timer) clearInterval(timer); timer = setInterval(fetchFrame, parseInt(rateSel.value)); }
+    rateSel.addEventListener('change', schedule);
+    async function fetchFrame(){
+      try {
+        const res = await fetch('/frame?' + Date.now(), { cache: 'no-store' });
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+        const img = new Image();
+        img.onload = () => {
+          canvas.width = img.width; canvas.height = img.height;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          frames++; const now = performance.now();
+          if (now - last >= 1000){ fpsEl.textContent = 'FPS: ' + frames; frames = 0; last = now; }
+          statusEl.textContent = 'Connected';
+          URL.revokeObjectURL(img.src);
+        };
+        img.onerror = () => { statusEl.textContent = 'Decode error'; };
+        img.src = URL.createObjectURL(blob);
+      } catch(e){ statusEl.textContent = 'Error'; }
+    }
+    schedule();
+  </script>
+</body>
+</html>

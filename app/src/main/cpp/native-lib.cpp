@@ -65,7 +65,29 @@ bool matToBitmap(JNIEnv *env, cv::Mat &mat, jobject bitmap) {
     }
 
     cv::Mat tmp(info.height, info.width, CV_8UC4, pixels);
-    mat.copyTo(tmp);
+
+    // Ensure source matches RGBA for safe copy
+    try {
+        if (mat.type() == CV_8UC4) {
+            mat.copyTo(tmp);
+        } else if (mat.type() == CV_8UC3) {
+            cv::Mat rgba;
+            cv::cvtColor(mat, rgba, cv::COLOR_RGB2RGBA);
+            rgba.copyTo(tmp);
+        } else if (mat.type() == CV_8UC1) {
+            cv::Mat rgba;
+            cv::cvtColor(mat, rgba, cv::COLOR_GRAY2RGBA);
+            rgba.copyTo(tmp);
+        } else {
+            LOGE("matToBitmap: Unsupported Mat type %d", mat.type());
+            AndroidBitmap_unlockPixels(env, bitmap);
+            return false;
+        }
+    } catch (const cv::Exception &e) {
+        LOGE("matToBitmap: cv exception %s", e.what());
+        AndroidBitmap_unlockPixels(env, bitmap);
+        return false;
+    }
 
     AndroidBitmap_unlockPixels(env, bitmap);
     return true;
