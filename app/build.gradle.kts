@@ -19,12 +19,15 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags("-std=c++11", "-frtti", "-fexceptions")
-                arguments("-DOpenCV_DIR=" + project.rootDir.absolutePath + "/OpenCV/native/jni")
+                arguments(
+                    "-DOpenCV_DIR=" + project.rootDir.absolutePath + "/OpenCV/native/jni",
+                    "-DANDROID_STL=c++_shared"
+                )
             }
         }
         
         ndk {
-            abiFilters += listOf("arm64-v8a")
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
         }
     }
 
@@ -48,6 +51,14 @@ android {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
             version = "3.22.1"
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true // ensure .so libs packed correctly with multiple ABIs
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
     buildFeatures {

@@ -2,12 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- CAMERA permission declared in manifest (Gradle cannot inject uses-permission; keeping explicit) -->
     <uses-permission android:name="android.permission.CAMERA" />
     
     <!-- Permissions for older Android versions -->
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <!-- WRITE_EXTERNAL_STORAGE kept for legacy devices (API <=29) -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29"
