@@ -31,14 +31,14 @@ Edge Detection Software is a cross-platform application that provides real-time 
 
 | Grayscale Mode | Edge Detection Mode |
 |:--------------:|:-------------------:|
-| ![Android Grayscale Mode](img/Greyscale2.png) | ![Android Edge Detection](img/edge2.png) |
+| ![Android Grayscale Mode](img/grey.png) | ![Android Edge Detection](img/edge.png) |
 | *Android app showing grayscale filter applied to live camera feed* | *Android app with edge detection filter active* |
 
 ### Web Interface
 
-| Normal Mode | Edge Detection Mode |
+| Edge Detection Mode | Grayscale Mode |
 |:-----------:|:------------------:|
-| ![Web Viewer Normal Mode](img/web1.png) | ![Web Viewer Edge Detection](img/web2.png) |
+| ![Web Viewer Edge Detection](img/webe.png) | ![Web Viewer Grayscale ](img/webg.png) |
 | *Web viewer with edge detection filter applied* | *Web viewer with greyscale filter applied* |
 
 ## Setup Instructions
