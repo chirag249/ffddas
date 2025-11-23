@@ -39,7 +39,7 @@ Edge Detection Software is a cross-platform application that provides real-time 
 | Normal Mode | Edge Detection Mode |
 |:-----------:|:------------------:|
 | ![Web Viewer Normal Mode](img/web1.png) | ![Web Viewer Edge Detection](img/web2.png) |
-| *Web viewer showing normal (unfiltered) camera feed* | *Web viewer with edge detection filter applied* |
+| *Web viewer with edge detection filter applied* | *Web viewer with greyscale filter applied* |
 
 ## Setup Instructions
 
