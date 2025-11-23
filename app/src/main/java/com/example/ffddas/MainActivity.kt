@@ -601,7 +601,7 @@ class MainActivity : AppCompatActivity() {
         // Load native libraries
         init {
             try {
-                System.loadLibrary("ffddas")
+                System.loadLibrary("edge_detection_software")
                 Log.d(TAG, "Native library loaded successfully")
             } catch (e: UnsatisfiedLinkError) {
                 Log.e(TAG, "Failed to load native library: ${e.message}", e)

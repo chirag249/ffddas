@@ -1,6 +1,6 @@
-# FFDDAS - Face and Feature Detection with Direct Analysis Streaming
+# Edge Detection Software
 
-FFDDAS is a cross-platform application that provides real-time image processing capabilities with edge detection and grayscale conversion filters. The project features both Android mobile and web interfaces, utilizing OpenCV for computer vision tasks through a high-performance native implementation.
+Edge Detection Software is a cross-platform application that provides real-time image processing capabilities with edge detection and grayscale conversion filters. The project features both Android mobile and web interfaces, utilizing OpenCV for computer vision tasks through a high-performance native implementation.
 
 ## Features Implemented
 
@@ -28,18 +28,18 @@ FFDDAS is a cross-platform application that provides real-time image processing 
 ## Visual Demonstrations
 
 ### Android App Interface
-![Android Grayscale Mode](img/Greyscale2.png)
-*Android app showing grayscale filter applied to live camera feed*
 
-![Android Edge Detection](img/edge2.png)
-*Android app with edge detection filter active*
+| Grayscale Mode | Edge Detection Mode |
+|:--------------:|:-------------------:|
+| ![Android Grayscale Mode](img/Greyscale2.png) | ![Android Edge Detection](img/edge2.png) |
+| *Android app showing grayscale filter applied to live camera feed* | *Android app with edge detection filter active* |
 
 ### Web Interface
-![Web Viewer Normal Mode](img/web1.png)
-*Web viewer showing normal (unfiltered) camera feed*
 
-![Web Viewer Edge Detection](img/web2.png)
-*Web viewer with edge detection filter applied*
+| Normal Mode | Edge Detection Mode |
+|:-----------:|:------------------:|
+| ![Web Viewer Normal Mode](img/web1.png) | ![Web Viewer Edge Detection](img/web2.png) |
+| *Web viewer showing normal (unfiltered) camera feed* | *Web viewer with edge detection filter applied* |
 
 ## Setup Instructions
 
@@ -87,24 +87,15 @@ OpenCV is pre-integrated in the project:
 5. Run the application
 
 #### Web Development
-1. Install TypeScript compiler:
-   ```bash
-   npm install
-   ```
-2. Build TypeScript files:
-   ```bash
-   npm run build
-   ```
-3. For development with auto-rebuild:
-   ```bash
-   npm run dev
-   ```
+The web component is automatically built and deployed as part of the Android application. No separate npm commands are required for normal operation.
 
 ### Running the Application
 1. Launch the Android app on your device
 2. Grant camera permissions when prompted
 3. Access the web viewer at `http://[device-ip]:8080` from any browser
 4. Use the switch camera button's long-press feature to open web viewer directly
+
+Note: There is a dedicated button in the Android app's interface that opens the web server interface directly, making manual URL access unnecessary. Simply press the "Open Web Viewer" button in the app to launch the web interface in your default browser.
 
 ## Architecture Overview
 

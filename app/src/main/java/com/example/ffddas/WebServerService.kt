@@ -39,7 +39,7 @@ class WebServerService(port: Int = 8080) : NanoHTTPD("0.0.0.0", port) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FFDDAS Live Viewer</title>
+    <title>Edge Detection Software Live Viewer</title>
     <style>
         * {
             margin: 0;
@@ -211,7 +211,7 @@ class WebServerService(port: Int = 8080) : NanoHTTPD("0.0.0.0", port) {
 </head>
 <body>
     <div class="header">
-        <div class="title">🎥 FFDDAS Live Viewer</div>
+        <div class="title">🎥 Edge Detection Software Live Viewer</div>
         <div class="status-container">
             <div class="status-indicator">
                 <div class="status-dot disconnected" id="statusDot"></div>

@@ -9,7 +9,7 @@ cmake_minimum_required(VERSION 3.22.1)
 # Since this is the top level CMakeLists.txt, the project name is also accessible
 # with ${CMAKE_PROJECT_NAME} (both CMake variables are in-sync within the top level
 # build script scope).
-project("ffddas")
+project("edge_detection_software")
 
 # Enable C++11, exceptions, RTTI
 set(CMAKE_CXX_STANDARD 11)
