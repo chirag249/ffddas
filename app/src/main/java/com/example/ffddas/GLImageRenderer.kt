@@ -12,16 +12,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
-/**
- * GLImageRenderer - Custom OpenGL ES 2.0 renderer that can display static and live
- * processed images coming from the OpenCV pipeline.
- * Requirements implemented:
- * 1. Shader implementation (compilation, multiple programs for modes)
- * 2. Texture management (volatile updates for live feed)
- * 3. Matrix transformations (MVP with aspect ratio + orientation)
- * 4. Performance monitoring (FPS)
- * 5. Resource management (cleanup of GL objects)
- */
+// GLImageRenderer: OpenGL ES 2.0 renderer for displaying processed frames.
 class GLImageRenderer : GLSurfaceView.Renderer {
 
     companion object {

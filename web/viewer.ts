@@ -1,7 +1,7 @@
+export {};
 const imgEl = document.getElementById('frame') as HTMLImageElement;
 const fpsEl = document.getElementById('fps') as HTMLDivElement;
 
-let lastFrameTime = performance.now();
 let framesThisSecond = 0;
 let lastSecondMark = performance.now();
 let socket: WebSocket | null = null;
@@ -15,7 +15,6 @@ function updateFps(){
     framesThisSecond = 0;
     lastSecondMark = now;
   }
-  lastFrameTime = now;
 }
 
 function setImageFromBase64(b64: string){
@@ -33,20 +32,16 @@ function loadFallback(){
 function startWebSocket(){
   try {
     socket = new WebSocket('ws://localhost:8081');
-    socket.onopen = () => { console.log('[viewer] WS connected'); };
     socket.onmessage = (ev) => {
       const data = typeof ev.data === 'string' ? ev.data : '';
-      if (data.startsWith('iVBOR') || data.startsWith('PNG') || data.length > 20){ // heuristic base64 png
+      if (data.startsWith('iVBOR') || data.startsWith('PNG') || data.length > 20){
         setImageFromBase64(data);
       }
     };
-    socket.onerror = () => { console.warn('[viewer] WS error, using fallback'); loadFallback(); };
-    socket.onclose = () => { console.warn('[viewer] WS closed, using fallback'); loadFallback(); };
-    // Fallback timeout if no frame in 2s
+    socket.onerror = loadFallback;
+    socket.onclose = loadFallback;
     setTimeout(()=>{ if (!fallbackUsed && framesThisSecond === 0) loadFallback(); }, 2000);
-  } catch(e){
-    console.error('[viewer] WS failed:', e); loadFallback();
-  }
+  } catch { loadFallback(); }
 }
 
 startWebSocket();

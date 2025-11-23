@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
     private var imageCapture: ImageCapture? = null
     private var imageAnalyzer: ImageAnalysis? = null
     private var cameraProvider: ProcessCameraProvider? = null
-    private var opencvProcessor: OpenCVProcessor? = null
+    // Removed unused OpenCVProcessor reference
     private lateinit var cameraExecutor: ExecutorService
     private var webServer: WebServerService? = null
 

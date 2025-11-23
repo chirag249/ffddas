@@ -1,4 +1,4 @@
-@echo off
+REM removed
 echo Fixing OpenCV CMake paths...
 
 cd /d C:\Users\chira\AndroidStudioProjects\ffddas\OpenCV\native\jni
