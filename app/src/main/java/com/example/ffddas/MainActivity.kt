@@ -8,11 +8,16 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Log
+import android.view.GestureDetector
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -25,6 +30,7 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,6 +41,11 @@ class MainActivity : AppCompatActivity() {
     // Removed unused OpenCVProcessor reference
     private lateinit var cameraExecutor: ExecutorService
     private var webServer: WebServerService? = null
+
+    // Camera controls
+    private var camera: Camera? = null
+    private lateinit var scaleGestureDetector: ScaleGestureDetector
+    private lateinit var gestureDetector: GestureDetector
 
     // Filter state
     private var currentFilter = FilterType.NONE
@@ -202,6 +213,42 @@ class MainActivity : AppCompatActivity() {
             onFilterChanged()
         }
         Log.d(TAG, "Filter group listener set")
+
+        // Gestures: pinch-to-zoom and tap-to-focus
+        scaleGestureDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val cam = camera ?: return false
+                val zoomState = cam.cameraInfo.zoomState.value
+                val currentZoom = zoomState?.zoomRatio ?: 1f
+                val minZoom = zoomState?.minZoomRatio ?: 1f
+                val maxZoom = zoomState?.maxZoomRatio ?: 1f
+                val newZoom = (currentZoom * detector.scaleFactor).coerceIn(minZoom, maxZoom)
+                cam.cameraControl.setZoomRatio(newZoom)
+                return true
+            }
+        })
+
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                val cam = camera ?: return false
+                val factory = binding.previewView.meteringPointFactory
+                val afPoint = factory.createPoint(e.x, e.y)
+                val action = FocusMeteringAction.Builder(afPoint, FocusMeteringAction.FLAG_AF)
+                    .addPoint(afPoint, FocusMeteringAction.FLAG_AE)
+                    .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                    .build()
+                cam.cameraControl.startFocusAndMetering(action)
+                return true
+            }
+        })
+
+        val touchHandler = View.OnTouchListener { _, event ->
+            var handled = scaleGestureDetector.onTouchEvent(event)
+            handled = gestureDetector.onTouchEvent(event) || handled
+            handled
+        }
+        binding.previewView.setOnTouchListener(touchHandler)
+        binding.controlPanel.setOnTouchListener(touchHandler)
     }
 
     private fun onFilterChanged() {
@@ -336,7 +383,7 @@ class MainActivity : AppCompatActivity() {
                 }, { currentFilter }, 100)
             )
 
-            provider.bindToLifecycle(
+            this.camera = provider.bindToLifecycle(
                 this,
                 cameraSelector,
                 preview,
